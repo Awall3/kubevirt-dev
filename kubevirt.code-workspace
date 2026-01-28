@@ -1,0 +1,114 @@
+{
+	"folders": [
+		{
+			"path": "../kubevirt"
+		},
+		{
+			"path": "../libvirt"
+		},
+		{
+			"path": "."
+		}
+	],
+	"settings": {},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "Launch file",
+				"type": "go",
+				"request": "launch",
+				"mode": "debug",
+				"program": "${file}"
+			}
+		]
+	},
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				"label": "Cluster Up",
+				"command": "make",
+				"type": "shell",
+				"args": [
+					"cluster-up"
+				],
+				"problemMatcher": [
+					"$lessCompile"
+				],
+				"presentation": {
+					"reveal": "always"
+				},
+				"options": {
+					"cwd": "${workspaceFolder:kubevirt}",
+					"env":{
+						"KUBEVIRTCI_TAG":"2601261222-1094ed30"
+					}
+				},
+				"group": "build"
+			},
+			{
+				"label": "Cluster Down",
+				"command": "make",
+				"type": "shell",
+				"args": [
+					"cluster-down"
+				],
+				"options": {
+					"cwd": "${workspaceFolder:kubevirt}",
+					"env":{
+						"KUBEVIRTCI_TAG":"2601261222-1094ed30"
+					}
+				},
+				"problemMatcher": [
+					"$lessCompile"
+				],
+				"presentation": {
+					"reveal": "always"
+				},
+				"group": "build"
+			},
+			{
+				"label": "Cluster Sync",
+				"command": "make",
+				"type": "shell",
+				"args": [
+					"cluster-sync"
+				],
+				"options": {
+					"cwd": "${workspaceFolder:kubevirt}",
+					"env":{
+						"KUBEVIRTCI_TAG":"2601261222-1094ed30"
+					}
+				},
+				"problemMatcher": [
+					"$lessCompile"
+				],
+				"presentation": {
+					"reveal": "always"
+				},
+				"group": "build"
+			},
+			{
+				"label": "Build libvirt",
+				"command": "./build-libvirt-rpm-container.bash",
+				"type": "shell",
+				"args": [
+				],
+				"options": {
+					"cwd": "${workspaceFolder:kubevirt-e2e}/scripts",
+					"env":{
+						"LIBVIRT_DIR":"${workspaceFolder:libvirt}"
+					}
+				},
+				"problemMatcher": [
+					"$lessCompile"
+				],
+				"presentation": {
+					"reveal": "always"
+				},
+				"group": "build"
+			}
+		]
+	}
+}

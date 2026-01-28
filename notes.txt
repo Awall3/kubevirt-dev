@@ -1,0 +1,10 @@
+weird newline on copy at https://kubevirt.io/user-guide/debug_virt_stack/launch-qemu-strace/ VMI "image" declaration: "image":"registry:5000/kubevirt/sidecar-shim:devel"
+
+persistent resevation flag at https://kubevirt.io/user-guide/storage/disks_and_volumes/
+
+
+strace docs don't provide docker build script or how to push to local repository
+
+build doc "custom-rpms.md" 
+    - references registry.gitlab.com/libvirt/libvirt/ci-centos-stream-8 which is deprecated
+    - references `meson build` which is deprecated
