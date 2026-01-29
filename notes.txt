@@ -7,4 +7,5 @@ strace docs don't provide docker build script or how to push to local repository
 
 build doc "custom-rpms.md" 
     - references registry.gitlab.com/libvirt/libvirt/ci-centos-stream-8 which is deprecated
-    - references `meson build` which is deprecated
+    - references `meson build` which is deprecated (should be `meson setup build`)
+    - custom-repo.yaml must be in a path that gets mounted by hack/dockerized

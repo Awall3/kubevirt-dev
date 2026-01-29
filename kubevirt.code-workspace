@@ -98,7 +98,8 @@
 				"options": {
 					"cwd": "${workspaceFolder:kubevirt-e2e}/scripts",
 					"env":{
-						"LIBVIRT_DIR":"${workspaceFolder:libvirt}"
+						"LIBVIRT_DIR":"${workspaceFolder:libvirt}",
+						"KUBEVIRT_DIR":"${workspaceFolder:kubevirt}"
 					}
 				},
 				"problemMatcher": [
