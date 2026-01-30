@@ -39,7 +39,7 @@ default_LIBVIRT_BUILDER_IMAGE="registry.gitlab.com/libvirt/libvirt/ci-centos-str
 
 LIBVIRT_BUILDER_IMAGE=${LIBVIRT_BUILDER_IMAGE:-"${default_LIBVIRT_BUILDER_IMAGE}"}
 
-OUT_DIR=${OUT_DIR:-build}
+OUT_DIR=${OUT_DIR:-${KUBEVIRT_DIR}/build}
 
 SYNC_OUT=${SYNC_OUT:-true}
 
