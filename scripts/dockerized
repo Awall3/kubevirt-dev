@@ -32,7 +32,7 @@ fail_if_cri_bin_missing() {
     fi
 }
 
-determine_cri_bin
+KUBEVIRT_CRI=$(determine_cri_bin)
 fail_if_cri_bin_missing
 
 default_LIBVIRT_BUILDER_IMAGE="registry.gitlab.com/libvirt/libvirt/ci-centos-stream-10"
@@ -43,11 +43,9 @@ OUT_DIR=${OUT_DIR:-build}
 
 SYNC_OUT=${SYNC_OUT:-true}
 
-BUILDER=${job_prefix}
+BUILDER=${job_prefix:-libvirt}
 
 SYNC_VENDOR=${SYNC_VENDOR:-false}
-
-TEMPFILE=".rsynctemp"
 
 CONTAINER_ENV="--env HTTP_PROXY=${HTTP_PROXY} --env HTTPS_PROXY=${HTTP_PROXY} --env NO_PROXY=${NO_PROXY}"
 
@@ -63,8 +61,10 @@ if [[ $KUBEVIRT_CRI = podman* ]] && [[ "$(uname -s)" == "Darwin" ]]; then
     selinux_bind_options=""
 fi
 
+
 # Make sure that the output directory exists on both sides
-mkdir -p ${OUT_DIR}
+# $KUBEVIRT_CRI run ${CONTAINER_ENV} -v "${BUILDER}:/root:rw${selinux_bind_options}" --security-opt "label=disable" --rm ${LIBVIRT_BUILDER_IMAGE} mkdir -p /root/libvirt/build
+# mkdir -p ${OUT_DIR}
 
 # Start an rsyncd instance and make sure it gets stopped after the script exits
 RSYNC_CID=$($KUBEVIRT_CRI run ${CONTAINER_ENV} -d -v "${BUILDER}:/root:rw${selinux_bind_options}" --security-opt "label=disable" --cap-add SYS_CHROOT --expose 873 -P ${LIBVIRT_BUILDER_IMAGE} /usr/bin/rsync --no-detach --daemon --verbose)
@@ -79,7 +79,7 @@ RSYNCD_PORT=$($KUBEVIRT_CRI port $RSYNC_CID 873 | cut -d':' -f2)
 
 rsynch_fail_count=0
 
-while ! rsync ${LIBVIRT_DIR}/${RSYNCTEMP} "rsync://root@127.0.0.1:${RSYNCD_PORT}/build/${RSYNCTEMP}" &>/dev/null; do
+while ! rsync ${KUBEVIRT_DIR}/${RSYNCTEMP} "rsync://root@127.0.0.1:${RSYNCD_PORT}/build/${RSYNCTEMP}" &>/dev/null; do
     if [[ "$rsynch_fail_count" -eq 0 ]]; then
         printf "Waiting for rsyncd to be ready"
         sleep .1
@@ -88,7 +88,7 @@ while ! rsync ${LIBVIRT_DIR}/${RSYNCTEMP} "rsync://root@127.0.0.1:${RSYNCD_PORT}
         sleep 1
     else
         printf "failed"
-        break
+        exit 1
     fi
     rsynch_fail_count=$((rsynch_fail_count + 1))
 done
@@ -98,16 +98,24 @@ printf "\n"
 rsynch_fail_count=0
 
 _rsync() {
-    rsync -al "$@"
+    # Preserve permissions, but change ownership to destination
+    rsync -rlpt "$@"
 }
 
 # Copy libvirt into the persistent container volume
 _rsync \
     --delete \
     ${LIBVIRT_DIR}/ \
-    "rsync://root@127.0.0.1:${RSYNCD_PORT}/libvirt"
+    "rsync://root@127.0.0.1:${RSYNCD_PORT}/build/libvirt"
 
-volumes="-v ${BUILDER}:/root:rw${selinux_bind_options}"
+# Copy libvirt build script
+_rsync \
+    ${LIBVIRT_BUILD_SCRIPT} \
+    "rsync://root@127.0.0.1:${RSYNCD_PORT}/build/"
+
+
+volumes="${EXTRA_VOLS}"
+volumes="$volumes -v ${BUILDER}:/build:rw${selinux_bind_options}"
 
 # append .docker secrets directory as volume
 mkdir -p "${HOME}/.docker/secrets"
@@ -136,18 +144,25 @@ if [ -n "$ARTIFACTS" ]; then
     fi
 fi
 
+BUILD_CID=$($KUBEVIRT_CRI run -dit ${volumes} -w /build ${LIBVIRT_BUILDER_IMAGE})
+function finish_build() {
+    $KUBEVIRT_CRI stop --time 1 ${BUILD_CID} >/dev/null 2>&1
+    $KUBEVIRT_CRI rm -f ${BUILD_CID} >/dev/null 2>&1
+}
+trap finish_build EXIT
+
 # Run the command
-test -t 1 && USE_TTY="-it"
-if ! $KUBEVIRT_CRI exec ${CONTAINER_ENV} ${USE_TTY} ${volumes} -w /root ${LIBVIRT_BUILDER_IMAGE} "$@"; then
+test -t 1 && USE_TTY="-t"
+if ! $KUBEVIRT_CRI exec ${CONTAINER_ENV} ${USE_TTY} ${BUILD_CID} $1; then
     # Copy the build output out of the container, make sure that _out exactly matches the build result
     if [ "$SYNC_OUT" = "true" ]; then
-        _rsync --delete "rsync://root@127.0.0.1:${RSYNCD_PORT}/libvirt/build" ${OUT_DIR}
+        _rsync --delete "rsync://root@127.0.0.1:${RSYNCD_PORT}/build/libvirt/build/" ${OUT_DIR}
     fi
     exit 1
 fi
 
 if [ "$SYNC_OUT" = "true" ]; then
-    _rsync --delete "rsync://root@127.0.0.1:${RSYNCD_PORT}/libvirt/build" ${OUT_DIR}
+    _rsync --delete "rsync://root@127.0.0.1:${RSYNCD_PORT}/build/libvirt/build/" ${OUT_DIR}
 fi
 
 # Copy the whole kubevirt data out to get generated sources and formatting changes

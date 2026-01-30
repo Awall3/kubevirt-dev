@@ -18,9 +18,11 @@ fi
 
   docker volume create rpms
   docker build -t libvirt-build-image -f Libvirt.dockerfile . 
-  docker run -td -w /libvirt-src --security-opt label=disable --user $(id -u):$(id -g) --name libvirt-build -v ${LIBVIRT_DIR}:/libvirt-src --workdir /libvirt-src -v rpms:/root/rpmbuild/RPMS libvirt-build-image
-  exit 0
-  docker exec -i libvirt-build /bin/bash < ${SCRIPT_DIR}/build-libvirt.bash
+
+  export LIBVIRT_BUILDER_IMAGE=libvirt-build-image
+  export EXTRA_VOLS="-v rpms:/root/rpmbuild/RPMS"
+  export LIBVIRT_BUILD_SCRIPT="${SCRIPT_DIR}/build-libvirt.bash"
+  ./dockerized ./build-libvirt.bash
 
   docker run -dit --name rpms-http-server -p 80 -v rpms:/usr/local/apache2/htdocs/ httpd:latest
   DOCKER_URL=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' rpms-http-server)
