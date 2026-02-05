@@ -1,4 +1,4 @@
-FROM registry.gitlab.com/libvirt/libvirt/ci-centos-stream-10
+FROM registry.gitlab.com/libvirt/libvirt/ci-centos-stream-9
 
 RUN dnf update -y && dnf builddep libvirt
 

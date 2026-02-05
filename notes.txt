@@ -9,3 +9,4 @@ build doc "custom-rpms.md"
     - references registry.gitlab.com/libvirt/libvirt/ci-centos-stream-8 which is deprecated
     - references `meson build` which is deprecated (should be `meson setup build`)
     - custom-repo.yaml must be in a path that gets mounted by hack/dockerized
+    - Need --general-compress-type gz using centos 10 to build

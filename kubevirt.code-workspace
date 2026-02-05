@@ -99,7 +99,8 @@
 					"cwd": "${workspaceFolder:kubevirt-e2e}/scripts",
 					"env":{
 						"LIBVIRT_DIR":"${workspaceFolder:libvirt}",
-						"KUBEVIRT_DIR":"${workspaceFolder:kubevirt}"
+						"KUBEVIRT_DIR":"${workspaceFolder:kubevirt}",
+						"KEEP_RPM_SERVER":"1"
 					}
 				},
 				"problemMatcher": [

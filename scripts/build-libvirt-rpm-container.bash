@@ -1,6 +1,8 @@
 #!/bin/bash
 set +x
 
+LIBVIRT_VERSION=${LIBVIRT_VERSION:-"0:12.1.0-1.el9"}
+
 SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 
 if [[ -z "$LIBVIRT_DIR" ]]; then
@@ -30,10 +32,10 @@ fi
 
 
   pushd ${KUBEVIRT_DIR}
-  make CUSTOM_REPO=manifests/generated/custom-repo.tmp rpm-deps
+  make CUSTOM_REPO=manifests/generated/custom-repo.tmp LIBVIRT_VERSION=${LIBVIRT_VERSION} rpm-deps
   popd
 )
 
-# Don't care if these fail
-# docker rm -f libvirt-build &> /dev/null
-# docker rm -f rpms-http-server &> /dev/null
+if [[ -z "$KEEP_RPM_SERVER" ]]; then
+  docker rm -f rpms-http-server &> /dev/null
+fi

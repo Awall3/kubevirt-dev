@@ -145,11 +145,12 @@ if [ -n "$ARTIFACTS" ]; then
 fi
 
 BUILD_CID=$($KUBEVIRT_CRI run -dit ${volumes} -w /build ${LIBVIRT_BUILDER_IMAGE})
-function finish_build() {
+function finish() {
+    $KUBEVIRT_CRI stop --time 1 ${RSYNC_CID} >/dev/null 2>&1
+    $KUBEVIRT_CRI rm -f ${RSYNC_CID} >/dev/null 2>&1
     $KUBEVIRT_CRI stop --time 1 ${BUILD_CID} >/dev/null 2>&1
     $KUBEVIRT_CRI rm -f ${BUILD_CID} >/dev/null 2>&1
 }
-trap finish_build EXIT
 
 # Run the command
 test -t 1 && USE_TTY="-t"
