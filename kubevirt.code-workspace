@@ -96,12 +96,31 @@
 				"args": [
 				],
 				"options": {
-					"cwd": "${workspaceFolder:kubevirt-e2e}/scripts",
+					"cwd": "${workspaceFolder:kubevirt-dev}/scripts",
 					"env":{
 						"LIBVIRT_DIR":"${workspaceFolder:libvirt}",
-						"KUBEVIRT_DIR":"${workspaceFolder:kubevirt}",
-						"KEEP_RPM_SERVER":"1"
+						"KUBEVIRT_DIR":"${workspaceFolder:kubevirt}"
 					}
+				},
+				"problemMatcher": [
+					"$lessCompile"
+				],
+				"presentation": {
+					"reveal": "always"
+				},
+				"dependsOn":[
+					"Shutdown RPMs"
+				],
+				"group": "build"
+			},
+			{
+				"label": "Shutdown RPMs",
+				"command": "./shutdown-rpms.bash",
+				"type": "shell",
+				"args": [
+				],
+				"options": {
+					"cwd": "${workspaceFolder:kubevirt-dev}/scripts",
 				},
 				"problemMatcher": [
 					"$lessCompile"

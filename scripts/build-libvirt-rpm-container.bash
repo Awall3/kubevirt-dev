@@ -48,7 +48,3 @@ fi
   make CUSTOM_REPO=manifests/generated/custom-repo.tmp LIBVIRT_VERSION=${LIBVIRT_VERSION} SINGLE_ARCH="x86_64" rpm-deps
   popd
 )
-
-if [[ -z "$KEEP_RPM_SERVER" ]]; then
-  docker rm -f rpms-http-server &> /dev/null
-fi
