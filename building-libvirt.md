@@ -13,31 +13,12 @@ There are other ways to solve, but keep in mind that by default libvirt will run
 These commands will fail with error "dubious file permissions" if the source code is owned by the user while the "build" folder is owned by root, which is the default if simply using volume mounts.
 You may opt to disable the git command part of the libvirt build and simply run those commands ahead of time, or choose another option to deal with docker user ownership in/out of the container.
 
-The `dockerized` script included in this repo runs the necessary build steps
-Scripts to build as well as a Dockerfile to produce the build image are included in the repo, and summarized below.
+The `dockerized` script included in this repo runs the necessary build steps.
+Scripts to build and a Dockerfile to produce the build image are included in the repo, and commented for explanation
 
-`
-  docker volume create rpms
-  docker build -t libvirt-build-image -f Libvirt.dockerfile . 
-
-  export LIBVIRT_BUILDER_IMAGE=libvirt-build-image
-  export EXTRA_VOLS="-v rpms:/root/rpmbuild/RPMS"
-  export LIBVIRT_BUILD_SCRIPT="${SCRIPT_DIR}/build-libvirt.bash"
-  ./dockerized ./build-libvirt.bash
-
-  docker run -dit --name rpms-http-server -p 80 -v rpms:/usr/local/apache2/htdocs/ httpd:latest
-  DOCKER_URL=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' rpms-http-server)
-  sed "s|DOCKER_URL|$DOCKER_URL|g" ${SCRIPT_DIR}/custom-repo.yaml > ${KUBEVIRT_DIR}/manifests/generated/custom-repo.tmp
-
-
-  pushd ${KUBEVIRT_DIR}
-  make CUSTOM_REPO=manifests/generated/custom-repo.tmp LIBVIRT_VERSION=12.1.0-1.el9.x86_64 SINGLE_ARCH="x86_64" rpm-deps
-  popd
-`
 I additionally rsync copied the `build-libvirt.bash` script into the container out of tree to run the build steps.
-
-I followed the custom-rpms instructions for 
-
+Libvirt only allows clean builds by default (no uncommited git changes).
+This can probably be disabled, or you may simply checkin changes before each build
 
 ## The `make rpm-deps` command
 TLDR: we need to set the LIBVIRT_VERSION variable to match that of the version we are building from source, and the SINGLE_ARCH variable to match what architecture we are building libvirt for (likely host arch). We *do not* need to set the BASESYSTEM variable, but the default value (centos-stream-release) implies what image version we should use for our dockerized build of libvirt
