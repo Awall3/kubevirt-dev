@@ -10,7 +10,19 @@
 			"path": "."
 		}
 	],
-	"settings": {},
+	"settings": {
+		"terminal.integrated.profiles.linux": {
+			"bash_kubevirt": {
+				"path": "bash",
+				"args": ["--rcfile", "${workspaceFolder:kubevirt-dev}/scripts/common.sh"],
+				"env": {
+					"LIBVIRT_DIR":"${workspaceFolder:libvirt}",
+					"KUBEVIRT_DIR":"${workspaceFolder:kubevirt}"
+				}
+			}
+		},
+		"terminal.integrated.defaultProfile.linux": "bash_kubevirt"
+	},
 	"launch": {
 		"version": "0.2.0",
 		"configurations": [
@@ -129,7 +141,16 @@
 					"reveal": "always"
 				},
 				"group": "build"
+			},
+			{
+				"label": "Source My Bash File",
+      			"type": "shell",
+      			"command": "source ${workspaceFolder:kubevirt-dev}/scripts/common.sh",
+				"runOptions": {
+					"runOn": "folderOpen"
+				}
 			}
 		]
+
 	}
 }
