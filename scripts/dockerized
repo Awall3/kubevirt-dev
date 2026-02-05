@@ -39,7 +39,7 @@ default_LIBVIRT_BUILDER_IMAGE="registry.gitlab.com/libvirt/libvirt/ci-centos-str
 
 LIBVIRT_BUILDER_IMAGE=${LIBVIRT_BUILDER_IMAGE:-"${default_LIBVIRT_BUILDER_IMAGE}"}
 
-OUT_DIR=${OUT_DIR:-${KUBEVIRT_DIR}/build}
+OUT_DIR=${OUT_DIR:-${LIBVIRT_DIR}/build}
 
 SYNC_OUT=${SYNC_OUT:-true}
 
@@ -63,8 +63,8 @@ fi
 
 
 # Make sure that the output directory exists on both sides
-# $KUBEVIRT_CRI run ${CONTAINER_ENV} -v "${BUILDER}:/root:rw${selinux_bind_options}" --security-opt "label=disable" --rm ${LIBVIRT_BUILDER_IMAGE} mkdir -p /root/libvirt/build
-# mkdir -p ${OUT_DIR}
+$KUBEVIRT_CRI run ${CONTAINER_ENV} -v "${BUILDER}:/root:rw${selinux_bind_options}" --security-opt "label=disable" --rm ${LIBVIRT_BUILDER_IMAGE} mkdir -p /root/libvirt/build
+mkdir -p ${OUT_DIR}
 
 # Start an rsyncd instance and make sure it gets stopped after the script exits
 RSYNC_CID=$($KUBEVIRT_CRI run ${CONTAINER_ENV} -d -v "${BUILDER}:/root:rw${selinux_bind_options}" --security-opt "label=disable" --cap-add SYS_CHROOT --expose 873 -P ${LIBVIRT_BUILDER_IMAGE} /usr/bin/rsync --no-detach --daemon --verbose)
@@ -165,23 +165,3 @@ fi
 if [ "$SYNC_OUT" = "true" ]; then
     _rsync --delete "rsync://root@127.0.0.1:${RSYNCD_PORT}/build/libvirt/build/" ${OUT_DIR}
 fi
-
-# Copy the whole kubevirt data out to get generated sources and formatting changes
-# _rsync \
-#     "rsync://root@127.0.0.1:${RSYNCD_PORT}/libvirt" \
-#     ${LIBVIRT_DIR}/
-
-# _rsync --delete "rsync://root@127.0.0.1:${RSYNCD_PORT}/build/manifests/generated/" "${KUBEVIRT_DIR}/manifests/generated"
-# _rsync --delete "rsync://root@127.0.0.1:${RSYNCD_PORT}/build/staging/src/kubevirt.io/client-go/containerizeddataimporter/" "${KUBEVIRT_DIR}/staging/src/kubevirt.io/client-go/containerizeddataimporter"
-# _rsync --delete "rsync://root@127.0.0.1:${RSYNCD_PORT}/build/staging/src/kubevirt.io/client-go/externalsnapshotter/" "${KUBEVIRT_DIR}/staging/src/kubevirt.io/client-go/externalsnapshotter"
-# _rsync --delete "rsync://root@127.0.0.1:${RSYNCD_PORT}/build/staging/src/kubevirt.io/client-go/kubevirt/" "${KUBEVIRT_DIR}/staging/src/kubevirt.io/client-go/kubevirt"
-# _rsync --delete "rsync://root@127.0.0.1:${RSYNCD_PORT}/build/staging/src/kubevirt.io/client-go/networkattachmentdefinitionclient/" "${KUBEVIRT_DIR}/staging/src/kubevirt.io/client-go/networkattachmentdefinitionclient"
-# _rsync --delete "rsync://root@127.0.0.1:${RSYNCD_PORT}/build/staging/src/kubevirt.io/client-go/prometheusoperator/" "${KUBEVIRT_DIR}/staging/src/kubevirt.io/client-go/prometheusoperator"
-# _rsync --delete "rsync://root@127.0.0.1:${RSYNCD_PORT}/build/examples/" "${KUBEVIRT_DIR}/examples"
-# if [ "$SYNC_VENDOR" = "true" ]; then
-#     _rsync --delete "rsync://root@127.0.0.1:${RSYNCD_PORT}/vendor" "${VENDOR_DIR}/"
-# fi
-# # Copy the build output out of the container, make sure that _out exactly matches the build result
-# if [ "$SYNC_OUT" = "true" ]; then
-#     _rsync --delete "rsync://root@127.0.0.1:${RSYNCD_PORT}/out" ${OUT_DIR}
-# fi

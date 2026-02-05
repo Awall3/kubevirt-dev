@@ -1,8 +1,6 @@
 #!/bin/bash
 set +x
 
-LIBVIRT_VERSION=${LIBVIRT_VERSION:-"0:12.1.0-1.el9"}
-
 SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 
 if [[ -z "$LIBVIRT_DIR" ]]; then
@@ -42,6 +40,9 @@ fi
   DOCKER_URL=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' rpms-http-server)
   sed "s|DOCKER_URL|$DOCKER_URL|g" ${SCRIPT_DIR}/custom-repo.yaml > ${KUBEVIRT_DIR}/manifests/generated/custom-repo.tmp
 
+
+  # Get the libvirt version number from meson introspection data
+  LIBVIRT_VERSION=${LIBVIRT_VERSION:-0:$(cat ${LIBVIRT_DIR}/build/version.txt)-1.el9}
 
   # Run the `make rpm-deps` command, adding our rpm host as a repo and setting other args as described in the building-libvirt doc 
   pushd ${KUBEVIRT_DIR}

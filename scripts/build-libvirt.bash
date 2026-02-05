@@ -8,3 +8,5 @@ ninja -C build dist
 rpmbuild -ta    /build/libvirt/build/meson-dist/libvirt-*.tar.xz 
 # Create repomd.xml
 createrepo_c -v --general-compress-type gz /root/rpmbuild/RPMS/x86_64   # Force the compress type. bazeldnf doesn't support zstd at time of writing
+# Write the libvirt build version to file
+meson introspect build --projectinfo | jq -r ".version" > /build/libvirt/build/version.txt

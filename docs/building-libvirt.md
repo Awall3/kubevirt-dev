@@ -45,7 +45,10 @@ This is a reasonable value as the kubevirt builder is *currently* based on CentO
 The **custom-rpms.md** docs mention that it is sometimes necessary to change this value, but changing the value is not necessary if using the standard kubevirt builder, and what values are valid to set for this is outside the scope of this document.
 
 ### Getting the correct LIBVIRT_VERSION
-The libvirt version of the compiled code can be found in **libvirt/meson.build** as shown:
+The build script automatically gets the libvirt version using the `meson introspect` within the build container and outputing the version value to **libvirt/build/version.txt**.
+
+#### Manual version setting
+The libvirt version of the compiled code can be found manually in **libvirt/meson.build** as shown:
 ```
 project(
   'libvirt', 'c',
@@ -63,6 +66,8 @@ project(
 The format of the LIBVIRT_VERSION environment variable is "0:<libvirt-version-number>-1.el<centos-stream-version>", for example:
 - Given the libvirt version shown (12.1.0) and using centos-stream-9 to build the rpms, you would have LIBVIRT_VERSION=0:12.1.0-1.el9
 - This ***does not*** exactly match the format of the built rpm file names (i.e. libvirt-devel-12.1.0-1.el9.x86_64.rpm)
+
+You may override the automatically populated value of LIBVIRT_VERSION by exporting the environment variable in the correct format
 
 With the correct environment variables set, we can successfully run the `make rpm-deps` command. Running a `git diff` in the kubevirt source folder will show the updated packages being referenced. You may also see some non-libvirt packages that changed that are simply newer versions available on the remote. All libvirt dependencies should show a *url* field that references the rpm http server that is being run in docker.
 
