@@ -87,3 +87,9 @@ The primary ways to run tasks are:
     - If no default is configured, VS Code will prompt you to select one or configure a default task.
 - Quick Open:
     - Open Quick Open with Ctrl+P (Windows/Linux) or Cmd+P (macOS), type task, a space, and then the name of the task you want to run (e.g., task lint). 
+
+
+# TODOs
+- Add qemu custom builds and docs
+- Investigate hosting rpms-http-server in the local kubevirt cluster, and spawning short-lived containers to rebuild libvirt and qemu quickly without tearing down the cluster
+- Deploying libvirt and qemu to remote debug cluster
