@@ -8,6 +8,12 @@
 		},
 		{
 			"path": "."
+		},
+		{
+			"path": "../qemu"
+		},
+		{
+			"path": "../qemu-kvm"
 		}
 	],
 	"settings": {
@@ -27,17 +33,44 @@
 		"version": "0.2.0",
 		"configurations": [
 			{
-				"name": "Launch file",
+				"name": "Connect to server",
 				"type": "go",
-				"request": "launch",
-				"mode": "debug",
-				"program": "${file}"
+				"request": "attach",
+				"mode": "remote",
+				"remotePath": "${workspaceFolder:kubevirt}",
+				"port": 2345,
+				"host": "127.0.0.1",
+				"preLaunchTask": "Deploy VM"
 			}
 		]
 	},
 	"tasks": {
 		"version": "2.0.0",
 		"tasks": [
+			{
+				"label": "Deploy VM",
+				"command": "./deploy.sh",
+				"options": {
+					"cwd": "${workspaceFolder:kubevirt-dev}/scripts",
+					"env":{
+						"KUBEVIRT_DIR":"${workspaceFolder:kubevirt}"
+					}
+				},
+				"isBackground": true,
+				"problemMatcher": {
+					"owner": "typescript",
+					"pattern": {
+						"regexp": "(.)(.)(.)(error)",
+						"file": 1,
+						"location": 2,
+						"message": 3
+					},
+					"background": {
+						"beginsPattern": "start",
+						"endsPattern": "Forwarding from 127.0.0.1:2345",
+					}
+				},
+			},
 			{
 				"label": "Cluster Up",
 				"command": "make",
@@ -102,8 +135,8 @@
 				"group": "build"
 			},
 			{
-				"label": "Build libvirt",
-				"command": "./build-libvirt-rpm-container.bash",
+				"label": "Build RPMs",
+				"command": "./build-rpms.bash",
 				"type": "shell",
 				"args": [
 				],
@@ -111,7 +144,8 @@
 					"cwd": "${workspaceFolder:kubevirt-dev}/scripts",
 					"env":{
 						"LIBVIRT_DIR":"${workspaceFolder:libvirt}",
-						"KUBEVIRT_DIR":"${workspaceFolder:kubevirt}"
+						"KUBEVIRT_DIR":"${workspaceFolder:kubevirt}",
+						"QEMU_DIR":"${workspaceFolder:qemu}",
 					}
 				},
 				"problemMatcher": [

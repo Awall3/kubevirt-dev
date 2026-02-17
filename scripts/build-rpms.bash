@@ -13,6 +13,11 @@ if [[ -z "$KUBEVIRT_DIR" ]]; then
   exit 1
 fi
 
+if [[ -z "$QEMU_DIR" ]]; then
+  echo "The variable 'QEMU_DIR' is not defined."
+  exit 1
+fi
+
 (
   set -e
 
@@ -21,17 +26,28 @@ fi
   # Build the CentOS Stream 9 image with some extra dependencies
   docker build -t libvirt-build-image -f Libvirt.dockerfile . 
 
-  # Override build image for dockerized to our local build
-  export LIBVIRT_BUILDER_IMAGE=libvirt-build-image
-
   # Mount the rpm volume to the default build output directory for libvirt RPMs
   export EXTRA_VOLS="-v rpms:/root/rpmbuild/RPMS"
 
+  # Don't copy output, there is none in a reasonable location atm
+  export OUT_DIR=""
   # Host-side path to build script
-  export LIBVIRT_BUILD_SCRIPT="${SCRIPT_DIR}/build-libvirt.bash"
+  export BUILD_SCRIPT="${SCRIPT_DIR}/build-qemu.bash"
 
+  export SRC_DIR=${QEMU_DIR}
+  # Pass the container-side path to the script (it will be rsynced to the cwd in the container)
+  ./dockerized ./build-qemu.bash
+
+  # Relative path to output dir (host and container match)
+  export OUT_DIR="build"
+  # Host-side path to build script
+  export BUILD_SCRIPT="${SCRIPT_DIR}/build-libvirt.bash"
+
+  export SRC_DIR=${LIBVIRT_DIR}
   # Pass the container-side path to the script (it will be rsynced to the cwd in the container)
   ./dockerized ./build-libvirt.bash
+
+
 
   # Mount the same rpm volume to an httpd container, and output it's IP to the "${KUBEVIRT_DIR}/manifests/generated/custom-repo.tmp" file
   # This file MUST be in the kubevirt source directory in a non-ignored location (see rsync commands in ${KUBEVIRT_DIR}/hack/dockerized), 

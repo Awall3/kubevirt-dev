@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
-if [[ -z "$LIBVIRT_DIR" ]]; then
-  echo "The variable 'LIBVIRT_DIR' is not defined."
+if [[ -z "$SRC_DIR" ]]; then
+  echo "The variable 'SRC_DIR' is not defined."
   exit 1
 fi
 
@@ -35,19 +35,11 @@ fail_if_cri_bin_missing() {
 KUBEVIRT_CRI=$(determine_cri_bin)
 fail_if_cri_bin_missing
 
-default_LIBVIRT_BUILDER_IMAGE="registry.gitlab.com/libvirt/libvirt/ci-centos-stream-10"
+default_BUILDER_IMAGE="libvirt-build-image"
 
-LIBVIRT_BUILDER_IMAGE=${LIBVIRT_BUILDER_IMAGE:-"${default_LIBVIRT_BUILDER_IMAGE}"}
+BUILDER_IMAGE=${BUILDER_IMAGE:-"${default_BUILDER_IMAGE}"}
 
-OUT_DIR=${OUT_DIR:-${LIBVIRT_DIR}/build}
-
-SYNC_OUT=${SYNC_OUT:-true}
-
-BUILDER=${job_prefix:-libvirt}
-
-SYNC_VENDOR=${SYNC_VENDOR:-false}
-
-CONTAINER_ENV="--env HTTP_PROXY=${HTTP_PROXY} --env HTTPS_PROXY=${HTTP_PROXY} --env NO_PROXY=${NO_PROXY}"
+BUILDER=${BUILDER:-custom-rpms}
 
 # Create the persistent container volume
 if [ -z "$($KUBEVIRT_CRI volume list | grep ${BUILDER})" ]; then
@@ -63,11 +55,13 @@ fi
 
 
 # Make sure that the output directory exists on both sides
-$KUBEVIRT_CRI run ${CONTAINER_ENV} -v "${BUILDER}:/root:rw${selinux_bind_options}" --security-opt "label=disable" --rm ${LIBVIRT_BUILDER_IMAGE} mkdir -p /root/libvirt/build
-mkdir -p ${OUT_DIR}
+if [[ ! -z "$OUT_DIR" ]]; then
+    $KUBEVIRT_CRI run -v "${BUILDER}:/root:rw${selinux_bind_options}" --security-opt "label=disable" --rm ${BUILDER_IMAGE} mkdir -p /root/${SRC_DIR}/${OUT_DIR}
+    mkdir -p ${SRC_DIR}/${OUT_DIR}
+fi
 
 # Start an rsyncd instance and make sure it gets stopped after the script exits
-RSYNC_CID=$($KUBEVIRT_CRI run ${CONTAINER_ENV} -d -v "${BUILDER}:/root:rw${selinux_bind_options}" --security-opt "label=disable" --cap-add SYS_CHROOT --expose 873 -P ${LIBVIRT_BUILDER_IMAGE} /usr/bin/rsync --no-detach --daemon --verbose)
+RSYNC_CID=$($KUBEVIRT_CRI run -d -v "${BUILDER}:/root:rw${selinux_bind_options}" --security-opt "label=disable" --cap-add SYS_CHROOT --expose 873 -P ${BUILDER_IMAGE} /usr/bin/rsync --no-detach --daemon --verbose)
 
 function finish() {
     $KUBEVIRT_CRI stop --time 1 ${RSYNC_CID} >/dev/null 2>&1
@@ -102,19 +96,21 @@ _rsync() {
     rsync -rlpt "$@"
 }
 
-# Copy libvirt into the persistent container volume
+# Copy source into the persistent container volume
 _rsync \
     --delete \
-    ${LIBVIRT_DIR}/ \
-    "rsync://root@127.0.0.1:${RSYNCD_PORT}/build/libvirt"
+    ${SRC_DIR}/ \
+    "rsync://root@127.0.0.1:${RSYNCD_PORT}/build/src"
 
-# Copy libvirt build script
+# Copy build script
 _rsync \
-    ${LIBVIRT_BUILD_SCRIPT} \
+    ${BUILD_SCRIPT} \
     "rsync://root@127.0.0.1:${RSYNCD_PORT}/build/"
 
 
 volumes="${EXTRA_VOLS}"
+
+# Add build volume mount (directory root for source in the container)
 volumes="$volumes -v ${BUILDER}:/build:rw${selinux_bind_options}"
 
 # append .docker secrets directory as volume
@@ -133,18 +129,7 @@ if [ -n "$DOCKER_CA_CERT_FILE" ] && [ -f "$DOCKER_CA_CERT_FILE" ]; then
     volumes="$volumes -v ${DOCKER_CA_CERT_FILE}:${DOCKERIZED_CUSTOM_CA_PATH}:ro${selinux_bind_options}"
 fi
 
-# if defined, append the ARTIFACTS directory
-if [ -n "$ARTIFACTS" ]; then
-    mkdir -p "$ARTIFACTS"
-    if [[ "$ARTIFACTS" = /* ]]; then
-        volumes="$volumes -v ${ARTIFACTS}:${ARTIFACTS}:rw${selinux_bind_options}"
-    else
-        echo "ARTIFACTS directory is specified, but it is not an absolute directory"
-        exit 1
-    fi
-fi
-
-BUILD_CID=$($KUBEVIRT_CRI run -dit ${volumes} -w /build ${LIBVIRT_BUILDER_IMAGE})
+BUILD_CID=$($KUBEVIRT_CRI run -dit ${volumes} -w /build ${BUILDER_IMAGE})
 function finish() {
     $KUBEVIRT_CRI stop --time 1 ${RSYNC_CID} >/dev/null 2>&1
     $KUBEVIRT_CRI rm -f ${RSYNC_CID} >/dev/null 2>&1
@@ -152,16 +137,19 @@ function finish() {
     $KUBEVIRT_CRI rm -f ${BUILD_CID} >/dev/null 2>&1
 }
 
+function copy_out() {
+    if [[ ! -z "$OUT_DIR" ]]; then
+        echo "Copying output to ${SRC_DIR}/${OUT_DIR}"
+        _rsync --delete "rsync://root@127.0.0.1:${RSYNCD_PORT}/build/src/${OUT_DIR}/" ${SRC_DIR}/${OUT_DIR}
+    fi
+}
+
 # Run the command
 test -t 1 && USE_TTY="-t"
 if ! $KUBEVIRT_CRI exec ${CONTAINER_ENV} ${USE_TTY} ${BUILD_CID} $1; then
     # Copy the build output out of the container, make sure that _out exactly matches the build result
-    if [ "$SYNC_OUT" = "true" ]; then
-        _rsync --delete "rsync://root@127.0.0.1:${RSYNCD_PORT}/build/libvirt/build/" ${OUT_DIR}
-    fi
+    copy_out
     exit 1
 fi
 
-if [ "$SYNC_OUT" = "true" ]; then
-    _rsync --delete "rsync://root@127.0.0.1:${RSYNCD_PORT}/build/libvirt/build/" ${OUT_DIR}
-fi
+copy_out

@@ -1,0 +1,11 @@
+#include "..." search starts here:
+#include <...> search starts here:
+ subprojects/libvhost-user/libvhost-user.a.p
+ subprojects/libvhost-user
+ ../subprojects/libvhost-user
+ /root/rpmbuild/BUILD/qemu-99.99.99/include
+ /usr/lib/gcc/x86_64-redhat-linux/11/include
+ /usr/local/include
+ /usr/include
+
+ 
