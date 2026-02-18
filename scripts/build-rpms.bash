@@ -18,6 +18,11 @@ if [[ -z "$QEMU_DIR" ]]; then
   exit 1
 fi
 
+if [[ -z "$QEMU_KVM_DIR" ]]; then
+  echo "The variable 'QEMU_DIR' is not defined."
+  exit 1
+fi
+
 (
   set -e
 
@@ -25,28 +30,33 @@ fi
   docker volume create rpms
   # Build the CentOS Stream 9 image with some extra dependencies
   docker build -t libvirt-build-image -f Libvirt.dockerfile . 
-
   # Mount the rpm volume to the default build output directory for libvirt RPMs
   export EXTRA_VOLS="-v rpms:/root/rpmbuild/RPMS"
 
-  # Don't copy output, there is none in a reasonable location atm
-  export OUT_DIR=""
-  # Host-side path to build script
-  export BUILD_SCRIPT="${SCRIPT_DIR}/build-qemu.bash"
+  RPM_VERSION_STRING=""
 
-  export SRC_DIR=${QEMU_DIR}
-  # Pass the container-side path to the script (it will be rsynced to the cwd in the container)
-  ./dockerized ./build-qemu.bash
+  if [[ -z "$LIBVIRT_ONLY" ]]; then
+    # Don't copy output, there is none in a reasonable location atm
+    export OUT_DIR=""
 
-  # Relative path to output dir (host and container match)
-  export OUT_DIR="build"
-  # Host-side path to build script
-  export BUILD_SCRIPT="${SCRIPT_DIR}/build-libvirt.bash"
+    export SRCS="${QEMU_DIR},${QEMU_KVM_DIR},${SCRIPT_DIR}/build-qemu.bash"
+    # Pass the container-side path to the script (it will be rsynced to the cwd in the container)
+    ./dockerized ./build-qemu.bash
 
-  export SRC_DIR=${LIBVIRT_DIR}
-  # Pass the container-side path to the script (it will be rsynced to the cwd in the container)
-  ./dockerized ./build-libvirt.bash
+    RPM_VERSION_STRING="${RPM_VERSION_STRING} QEMU_VERSION=${QEMU_VERSION:-17:99.99.99-12.el9}"
+  fi
 
+  if [[ -z "$QEMU_ONLY" ]]; then
+    export OUT_DIR="libvirt/build:${LIBVIRT_DIR}/build"
+
+    export SRCS="${LIBVIRT_DIR},${SCRIPT_DIR}/build-libvirt.bash"
+
+    # Pass the container-side path to the script (it will be rsynced to the cwd in the container)
+    ./dockerized ./build-libvirt.bash
+
+    # Get the libvirt version number from meson introspection data
+    RPM_VERSION_STRING="${RPM_VERSION_STRING} LIBVIRT_VERSION=${LIBVIRT_VERSION:-0:$(cat ${LIBVIRT_DIR}/build/version.txt)-1.el9}"
+  fi
 
 
   # Mount the same rpm volume to an httpd container, and output it's IP to the "${KUBEVIRT_DIR}/manifests/generated/custom-repo.tmp" file
@@ -54,14 +64,10 @@ fi
   # otherwise it will not be copied into the build container. The manifests/generated folder is an arbitrary selection that is gitignored but not rsync ignored
   docker run -dit --name rpms-http-server -p 80 -v rpms:/usr/local/apache2/htdocs/ httpd:latest
   DOCKER_URL=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' rpms-http-server)
-  sed "s|DOCKER_URL|$DOCKER_URL|g" ${SCRIPT_DIR}/custom-repo.yaml > ${KUBEVIRT_DIR}/manifests/generated/custom-repo.tmp
-
-
-  # Get the libvirt version number from meson introspection data
-  LIBVIRT_VERSION=${LIBVIRT_VERSION:-0:$(cat ${LIBVIRT_DIR}/build/version.txt)-1.el9}
+  sed "s|DOCKER_URL|$DOCKER_URL|g" ${SCRIPT_DIR}/custom-repo.yaml > ${KUBEVIRT_DIR}/manifests/generated/custom-repo.tmp 
 
   # Run the `make rpm-deps` command, adding our rpm host as a repo and setting other args as described in the building-libvirt doc 
   pushd ${KUBEVIRT_DIR}
-  make CUSTOM_REPO=manifests/generated/custom-repo.tmp LIBVIRT_VERSION=${LIBVIRT_VERSION} SINGLE_ARCH="x86_64" rpm-deps
+  make CUSTOM_REPO=manifests/generated/custom-repo.tmp ${RPM_VERSION_STRING} SINGLE_ARCH="x86_64" rpm-deps
   popd
 )

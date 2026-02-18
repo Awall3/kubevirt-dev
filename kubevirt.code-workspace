@@ -146,6 +146,7 @@
 						"LIBVIRT_DIR":"${workspaceFolder:libvirt}",
 						"KUBEVIRT_DIR":"${workspaceFolder:kubevirt}",
 						"QEMU_DIR":"${workspaceFolder:qemu}",
+						"QEMU_KVM_DIR":"${workspaceFolder:qemu-kvm}",
 					}
 				},
 				"problemMatcher": [
